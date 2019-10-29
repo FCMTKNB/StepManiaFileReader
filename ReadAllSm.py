@@ -1,11 +1,11 @@
-﻿
+
 import re
 import ReadSmFile
 from pathlib import Path
 import csv
 import pprint
 
-p = Path("Songs")
+p = Path("SongsTest")
 smList = list(p.glob("**/*.sm"))
 
 mapDataList = []

@@ -1,4 +1,4 @@
-﻿
+
 import re
 import ReadSmFileSub
 
@@ -88,6 +88,9 @@ def CountNotes(filename):
 
         measure, totalNotes, totalAir, totalFreeze, totalShock = ReadSmFileSub.CountNotes(measures, bpmList, stopList)
         totalTime, voltage = measure.GetTotalTime()
+
+        arrowrow = measure.GetArrowRow()
+        ratio = ReadSmFileSub.GetTwistRatio(arrowrow)
 
         mapData = {"SongName": songName}
         diffStr = "none"

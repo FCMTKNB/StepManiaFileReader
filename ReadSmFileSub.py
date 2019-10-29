@@ -1,4 +1,3 @@
-﻿
 class SoftLanTiming:
     def __init__(self):
         # ['167=0.327', '323=0.967']
@@ -16,7 +15,7 @@ class SoftLanTiming:
 class ArrowRow:
     def __init__(self):
         self.beat = 0  # 何分か　4～192
-        self.arrow = [0, 0, 0, 0]  # 0なし　1通常アロー　2FA開始　3FA終わり　4SA
+        self.arrow = [0, 0, 0, 0]  # 0なし　1通常アロー　2FA開始　     3FA終わり　4SA 今回は3とMはないものとする
         self.pos = 0.0  # 位置 4分だと1.0 2.0 3.0 8分だと3.5 4.0 4.5
         self.bpm = 0.0
         self.softlan = SoftLanTiming()
@@ -30,6 +29,9 @@ class ArrowRow:
         self.arrow[1] = a2
         self.arrow[2] = a3
         self.arrow[3] = a4
+
+    def GetArrow(self):
+        return self.arrow
 
     def SetPos(self, p):
         self.pos = p
@@ -71,6 +73,9 @@ class SmMesure:
 
     def AddArrowRow(self, arrow):
         self.arrowRow.append(arrow)
+
+    def GetArrowRow(self):
+        return self.arrowRow
 
     def GetMesureLength(self):
         return len(self.arrowRow)
@@ -122,7 +127,7 @@ class SmMesure:
                 # このノーツにたどり着いた=一つ直前のbpm時間だけ経過した
                 # 4分4分で　bpm60なら　1分間に60ノーツ＝　1秒経過した
                 # 4分8分なら　で　bpm60なら　1分間に60ノーツ＝　0.5秒が経過した
-                noteTime = (60/preRow.GetBpm() * (row.GetPos() - preRow.GetPos()))
+                noteTime = (60 / preRow.GetBpm() * (row.GetPos() - preRow.GetPos()))
                 # さらに停止があればその時間も加算
                 stopTime = row.GetSoftlan().value
                 totalTime = totalTime + (noteTime + stopTime)
@@ -197,7 +202,7 @@ def CountNotes(measures, bpmList, stopList):
 
             arrow = ArrowRow()
             arrow.SetArrow(int(row[0]), int(row[1]), int(row[2]), int(row[3]))
-            arrow.SetPos(1+me)
+            arrow.SetPos(1 + me)
             arrow.SetBpm(nowBpm)
 
             # 停止のチェック
@@ -216,3 +221,71 @@ def CountNotes(measures, bpmList, stopList):
     return smmesure, totalNotes, totalAir, totalFreeze, totalShock
 
 
+# 渡されたノーツの捻り度を算出する
+# ノーツに隙間がないこと　密度も気にしない　同時もないこと
+def GetTwistRatio(ArrowRowList):
+    # 最初のノーツを左足で踏むパターンと右足で踏むパターンを解析する
+    # 1000    1000
+    # 0001    0100
+    # 1000    0001
+
+    # 1.　ノーツリストを舐めて、↑↓以外が出てくる場所を探す
+    flg1 = ""
+    stepListL = []
+    countL = 0
+    LRNoteCount = 0
+    twistCountL = 0
+    twistCountR = 0
+    for i, arrow in enumerate(ArrowRowList):
+        arrows = arrow.GetArrow()
+        if arrows[0] != 0 or arrows[3] != 0:
+            LRNoteCount = LRNoteCount + 1
+        if len(flg1) == 0:
+            if arrows[0] != 0:
+                flg1 = "LeftFind"
+            if arrows[3] != 0:
+                flg1 = "RightFind"
+        if flg1 != "LeftFind" and flg1 != "RightFind":
+            # stepListL.append("上下")
+            continue
+
+        if flg1 == "LeftFind":
+            # 2. 1000なら左足で踏むと仮定する
+            if countL % 2 == 0:  # 左足
+                if arrows[3] != 0:
+                    twistCountL = twistCountL+1
+            if countL % 2 == 1:  # 右足
+                if arrows[0] != 0:
+                    twistCountL = twistCountL+1
+            # 3. 1000でも右足で踏んでみる
+            if countL % 2 == 0:  # 右足
+                if arrows[0] != 0:
+                    twistCountR = twistCountR+1
+            if countL % 2 == 1:  # 左足
+                if arrows[3] != 0:
+                    twistCountR = twistCountR+1
+            countL = countL + 1
+
+        elif flg1 == "RightFind":
+            # 2. 0001なら右足で踏むと仮定する
+            if countL % 2 == 0:  # 右足
+                if arrows[0] != 0:
+                    twistCountL = twistCountL+1
+            if countL % 2 == 1:  # 左足
+                if arrows[3] != 0:
+                    twistCountL = twistCountL+1
+            # 3. 0001でも左足で踏んでみる
+            if countL % 2 == 0:  # 左足
+                if arrows[3] != 0:
+                    twistCountR = twistCountR+1
+            if countL % 2 == 1:  # 右足
+                if arrows[0] != 0:
+                    twistCountR = twistCountR+1
+            countL = countL + 1
+
+    print("twistCountL" + str(twistCountL))
+    print("twistCountR" + str(twistCountR))
+    print("LRNoteCount" + str(LRNoteCount))
+    if twistCountL < twistCountR:
+        return twistCountL / LRNoteCount
+    return twistCountR / LRNoteCount
